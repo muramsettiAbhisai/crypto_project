@@ -87,7 +87,38 @@ int main() {
         }
         else
         {
-            std::cout<<"yeah now you are loggedin\n";
+            std::string kk;
+            std::getline(std::cin, kk);
+            if(kk=="get_ticket")
+            {
+                std::string buff;
+                std::cout<<"enter name\n";
+                std::getline(std::cin, buff);
+                send(sfd,buff.c_str(),buff.size(),0);
+                sleep(1);
+                std::cout<<"enter date of journey\n";
+                std::getline(std::cin, buff);
+                send(sfd,buff.c_str(),buff.size(),0);
+                sleep(1);
+                std::cout<<"enter to \n";
+                std::getline(std::cin, buff);
+                sleep(1);
+                send(sfd,buff.c_str(),buff.size(),0);
+                std::cout<<"enter from\n";
+                sleep(1);
+                std::getline(std::cin, buff);
+                send(sfd,buff.c_str(),buff.size(),0);
+                char response[1000];
+                recv(sfd, response, sizeof(response), 0);
+                std::cout<<response<<"\n";
+
+            }
+            else if(kk=="verify_ticket")
+            {
+
+            }
+
+
 
         }
         

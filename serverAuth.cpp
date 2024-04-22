@@ -12,7 +12,7 @@
 #include <map>
 
 using namespace CryptoPP;
-
+std::atomic<int> ticketCounter(0); // Atomic counter for ticket IDs
 std::map<std::string, std::string> userMap;
 pthread_mutex_t mapMutex = PTHREAD_MUTEX_INITIALIZER; // Mutex for thread-safe access to userMap
 
@@ -39,7 +39,29 @@ bool authenticateUser(const std::string& username, const std::string& hashedPass
     pthread_mutex_unlock(&mapMutex); // Unlock the mutex after accessing userMap
     return authenticated;
 }
-
+void issueTicket(const std::string& username, const std::string& date, const std::string& to, const std::string& from) {
+    static pthread_mutex_t ticketMutex = PTHREAD_MUTEX_INITIALIZER; // Mutex for thread-safe access to ticketCounter
+    pthread_mutex_lock(&ticketMutex); // Lock the mutex before accessing ticketCounter
+    int ticketID = ticketCounter.fetch_add(1); // Get and increment ticket ID atomically
+    pthread_mutex_unlock(&ticketMutex); // Unlock the mutex after accessing ticketCounter
+    std::string ticketFilename = "ticket_" + std::to_string(ticketID);
+    std::ofstream ticketFile(ticketFilename + ".txt"); // Open ticket file with unique name
+    if (ticketFile.is_open()) {
+        ticketFile << "Ticket ID: " << ticketID << std::endl;
+        ticketFile << "Passenger Name: " << username << std::endl;
+        ticketFile << "Date of Journey: " << date << std::endl;
+        ticketFile << "Departure Airport: " << from << std::endl;
+        ticketFile << "Destination Airport: " << to << std::endl;
+        ticketFile << "Flight Number: XYZ123" << std::endl; // Sample flight number
+        ticketFile << "Seat Number: A1" << std::endl; // Sample seat assignment
+        ticketFile << "Departure Time: 08:00 AM" << std::endl; // Sample departure time
+        ticketFile << "Arrival Time: 10:00 AM" << std::endl; // Sample arrival time
+        ticketFile << "Airline: ABC Airlines" << std::endl; // Sample airline
+        ticketFile << "Gate: 5" << std::endl; // Sample gate number
+    } else {
+        std::cerr << "Unable to open ticket file for writing." << std::endl;
+    }
+}
 void* handleClient(void* arg) {
     int nsfd = *((int*)arg);
     delete (int*)arg; // Free memory allocated for the argument
@@ -72,8 +94,6 @@ void* handleClient(void* arg) {
             decrypted = decrypted.substr(0, decrypted.find('\0')); // Remove null terminator from decrypted string
 
             if (choice == 1) { // Signup
-                std::cout<<decrypted<<"\n";
-                std::cout.flush();
                 if (userExists(decrypted)) {
                     send(nsfd, "Username already exists! please login", sizeof("Username already exists! please login"), 0);
                     sleep(1);
@@ -98,9 +118,19 @@ void* handleClient(void* arg) {
         }
         else
         {
-            std::cout<<"now you are logged IN";
-            std::cout.flush();
-            sleep(3);
+           
+                char name[1000]={'\0'}, date[1000]={'\0'}, to[1000]={'\0'}, from[1000]={'\0'};
+                recv(nsfd, name, sizeof(name), 0);
+                recv(nsfd, date, sizeof(date), 0);
+                recv(nsfd, to, sizeof(to), 0);
+                recv(nsfd, from, sizeof(from), 0);
+                issueTicket(name, date, to, from); // Issue the ticket
+                std::cout<<name<<to<<from<<date;
+                std::cout.flush();
+                send(nsfd, "Ticket issued successfully!", sizeof("Ticket issued successfully!"), 0);
+            
+           
+           
         }
         
     }
