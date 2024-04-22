@@ -1,53 +1,19 @@
-#include <bits/stdc++.h>
+#include <crypto++/cryptlib.h>
+#include <crypto++/hex.h>
+#include <crypto++/rsa.h>
+#include <crypto++/files.h>
+#include <crypto++/randpool.h>
+#include <iostream>
+#include <fstream>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include <cryptopp/des.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/filters.h>
-#include <crypto++/sha.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sstream>
-#include <unistd.h>
 
 using namespace CryptoPP;
 
-std::string addPadding(const std::string& input, size_t blockSize) {
-    size_t paddingSize = blockSize - (input.size() % blockSize);
-    char paddingChar = static_cast<char>(paddingSize);
-    std::string paddedInput = input + std::string(paddingSize, paddingChar);
-    return paddedInput;
-}
-
-std::string encryptDES(const std::string& input) {
-    std::string ciphertext;
-    ECB_Mode<DES>::Encryption encryptor;
-    unsigned char key[DES::DEFAULT_KEYLENGTH];
-    std::memcpy(key, "01234567", DES::DEFAULT_KEYLENGTH);
-    encryptor.SetKey(key, DES::DEFAULT_KEYLENGTH);
-     std::string paddedInput = addPadding(input, CryptoPP::DES::BLOCKSIZE);
-    StringSource(paddedInput, true, new StreamTransformationFilter(encryptor, new StringSink(ciphertext)));
-    return ciphertext;
-}
-
-std::string hash_to_string(const unsigned char *value, size_t length) {
-    std::stringstream ss;
-    for (size_t i = 0; i < length - 1; i++)
-        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(value[i]) << ":";
-    ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(value[length - 1]);
-    return ss.str();
-}
-
-
-
-std::string sha256(std::string& password) {
-    std::string digest;
-    SHA256 hash;
-    hash.Update(reinterpret_cast<const byte*>(password.data()), password.size());
-    digest.resize(hash.DigestSize());
-    hash.Final(reinterpret_cast<byte*>(&digest[0])); 
-    digest=hash_to_string(reinterpret_cast<byte*>(digest.data()), hash.DigestSize());  
-    std::cout<<"hash is: "<<digest<<std::endl;
-    return digest;     
-}
 int main() {
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd == -1) {
@@ -66,23 +32,68 @@ int main() {
         close(sfd);
         return -1;
     }
-    
-    std::string username, password;
-    std::cout << "Enter username: "<<std::endl;
-    std::getline(std::cin,username);
-    std::cout << "Enter password: "<<std::endl;
-    std::cin >> password;
 
-    std::string encryptedUsername = encryptDES(username);
-    std::cout<<"encryptedUsername is:"<<encryptedUsername<<std::endl;
-    std::string hashedPassword = sha256(password);
+    std::string iv("0123456789012345"); 
+    RandomPool randPool;
+    randPool.IncorporateEntropy((unsigned char*)iv.c_str(), iv.size());
+    RSA::PublicKey p_publicKey;
+    FileSource publicKeyFile("my_rsa_public2.bin", true);
+    p_publicKey.Load(publicKeyFile);    
     
-    send(sfd, encryptedUsername.c_str(), encryptedUsername.size(), 0);
-    sleep(1);
-    send(sfd, hashedPassword.c_str(), hashedPassword.size(), 0);
- 
-    shutdown(sfd, SHUT_RDWR);
+    RSAES<OAEP<SHA256>>::Encryptor  encryptor(p_publicKey); 
+    bool loggedIn = false;
+    while (true) {
+        if(!loggedIn)
+        {
+            std::cout << "Choose an option:" << std::endl;
+            std::cout << "1. Signup" << std::endl;
+            std::cout << "2. Login" << std::endl;
+            std::cout << "3. Exit" << std::endl;
+            int choice;
+            std::cin >> choice;
+            std::cin.ignore(); // Ignore the newline character
+            
+            if (choice == 1 || choice == 2) {
+                std::string username, password;
+                std::cout << "Enter username: ";
+                std::getline(std::cin, username);
+                std::cout << "Enter password: ";
+                std::getline(std::cin, password);
+                
+                std::string encryptedUsername, hashedPassword;
+                StringSource(username, true, new PK_EncryptorFilter(randPool, encryptor, new HexEncoder(new StringSink(encryptedUsername))));
+                SHA256 hash;
+                StringSource(password, true, new HashFilter(hash, new StringSink(hashedPassword)));
+
+                // Send choice, encrypted username, and hashed password to server
+                send(sfd, &choice, sizeof(choice), 0);
+                sleep(0.1);
+                send(sfd, encryptedUsername.c_str(), encryptedUsername.size(), 0);
+                sleep(0.1);
+                send(sfd, hashedPassword.c_str(), hashedPassword.size(), 0);
+                sleep(0.1);
+                char response[1000];
+                recv(sfd, response, sizeof(response), 0);
+                if(strcmp(response,"success")==0)
+                {
+                    loggedIn=true;
+                }
+                std::cout<<response<<"\n";
+            } else if (choice == 3) {
+                break; // Exit the loop and close the socket
+            } else {
+                std::cout << "Invalid choice. Please try again." << std::endl;
+            }
+        }
+        else
+        {
+            std::cout<<"yeah now you are loggedin\n";
+
+        }
+        
+    }
+
+    close(sfd);
 
     return 0;
 }
-
