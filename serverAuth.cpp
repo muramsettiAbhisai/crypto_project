@@ -184,7 +184,7 @@ void* handleClient(void* arg) {
                 }
                 std::cout<<"successfully signed the recieved ticket and sent it back"<<std::endl;
                 signatureFile.close();
-                while(1);
+                
 
         }
         
