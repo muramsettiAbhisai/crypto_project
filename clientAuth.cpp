@@ -13,7 +13,7 @@
 #include <cryptopp/filters.h>
 
 using namespace CryptoPP;
-
+std::atomic<int> ticketCounter(0); // Atomic counter for ticket IDs
 int main() {
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd == -1) {
@@ -43,6 +43,7 @@ int main() {
     
     RSAES<OAEP<SHA256>>::Encryptor  encryptor(p_publicKey); 
     bool loggedIn = false;
+    std::string ticketFilename,signatureFilename;
     while (true) {
         if(!loggedIn)
         {
@@ -111,8 +112,11 @@ int main() {
                 std::getline(std::cin, buff);
                 send(sfd,buff.c_str(),buff.size(),0);
                 char response[1000];
-                std::ofstream ticketFile("tikcetFile.txt");
-                std::ofstream signatureFile("signatureFile.txt");
+                int ticketID = ticketCounter.fetch_add(1); 
+                ticketFilename="user_ticket_"+std::to_string(ticketCounter)+".txt";
+                signatureFilename="user_signature_"+std::to_string(ticketCounter)+".txt";
+                std::ofstream ticketFile(ticketFilename.c_str());
+                std::ofstream signatureFile(signatureFilename.c_str());
                 int bytes_received=0;
                 char buffer1[1000];
                 int cnt=0;
@@ -169,7 +173,7 @@ int main() {
                 }
                 SHA256 hash;
                 std::string msg_hash;
-                FileSource hashing("tikcetFile.txt", true, new HashFilter(hash,new HexEncoder(new StringSink(msg_hash))));
+                FileSource hashing(ticketFilename.c_str(), true, new HashFilter(hash,new HexEncoder(new StringSink(msg_hash))));
                 std::cout<<"do you want to change any field of ticket\nEnter : 1 to edit  0 to not edit"<<std::endl;
                 int choice;
                 std::cin>>choice;
@@ -177,7 +181,7 @@ int main() {
                 {
                   int ch;
                   
-                  std::ifstream editfile("tikcetFile.txt");
+                  std::ifstream editfile(ticketFilename.c_str());
                   if(!editfile.is_open())std::cout<<"error in opening file"<<std::endl;
                   std::vector<std::string> lines;
                   std::string line;
@@ -220,7 +224,7 @@ int main() {
                      edit+="TO   : "+change;
                      lines[ch-1]=edit;
                   }
-                  std::ofstream writefile("tikcetFile.txt");
+                  std::ofstream writefile(ticketFilename.c_str());
                   if(!writefile.is_open())std::cout<<"error in opening file"<<std::endl;
                   std::cout<<"this is the modified ticket"<<std::endl;
                   std::cout<<"**************************"<<std::endl;
@@ -238,8 +242,8 @@ int main() {
                 std::cout<<"modified tikcet is  transmitted for verification"<<std::endl;
                 else
                 std::cout<<"Original tikcet is transmitted for verification"<<std::endl;
-                std::ifstream ticketFile("tikcetFile.txt");
-                std::ifstream signatureFile("signatureFile.txt");
+                std::ifstream ticketFile(ticketFilename.c_str());
+                std::ifstream signatureFile(signatureFilename.c_str());
                 //std::cout<<"sending"<<std::endl;
                 std::string line,line2;
                 while (std::getline(ticketFile, line))
@@ -262,6 +266,7 @@ int main() {
                 char result[100];
                 recv(sfd_2,result,sizeof(result),0);
                 std::cout<<result<<std::endl;
+                if(choice==0)std::cin.ignore();
             }
 
 
