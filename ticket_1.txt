@@ -1,11 +1,4 @@
-Ticket ID: 1
-Passenger Name: 
-Date of Journey: 
-Departure Airport: 
-Destination Airport: 
-Flight Number: XYZ123
-Seat Number: A1
-Departure Time: 08:00 AM
-Arrival Time: 10:00 AM
-Airline: ABC Airlines
-Gate: 5
+Name : 
+Date : 
+From : 
+To   : 
