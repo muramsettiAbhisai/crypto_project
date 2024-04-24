@@ -89,7 +89,7 @@ void* handleClient(void* arg) {
         std::cout << "hash obtained from decrypting signature file:\n" << msg_hash << std::endl;
         std::cout << "hash generated from recieved ticket file :\n" << signer_buff << std::endl;
         std::cout << "********************************" << std::endl;
-        
+        sleep(1);
         if (result)
         {
             std::cout << "both hashes are same" << std::endl;
@@ -100,7 +100,7 @@ void* handleClient(void* arg) {
         {
             std::cout << "both hashes are different" << std::endl;
             std::cout << "Failed to Verify Signature on File " << std::endl; 
-            send(nsfd,"Failed to Verify Signature on File ",sizeof("Failed to Verify Signature on File"),0);
+            send(nsfd,"Failed to Verify Signature on File ",sizeof("Failed to Verify Signature on File "),0);
         }
     }
     
