@@ -138,8 +138,10 @@
             else
             {
                 std::string kk;
-                std::cout<<"enter command(get_ticket / verify_ticket)"<<std::endl;
+                std::cout<<"enter command(get_ticket / verify_ticket/log_out)"<<std::endl;
                 std::getline(std::cin, kk);
+                send(sfd,kk.c_str(),sizeof(kk),0);
+                sleep(1);
                 if(kk=="get_ticket")
                 {
                     std::string buff;
@@ -172,6 +174,7 @@
                     int bytes_received=0;
                     char buffer1[1000];
                     int cnt=0;
+                    std::string name="user_ticket_"+std::to_string(ticketCounter);
                     while ((bytes_received = recv(sfd,buffer1,sizeof(buffer1),0)) > 0) 
                     {
                         std::string temp  =  buffer1;
@@ -180,7 +183,7 @@
                         cnt++;
                         if(cnt==1)
                         {
-                            std::cout<<"ticket recieved from signer is:"<<std::endl;
+                           std::cout<<"ticket- "<<name<<" recieved from signer is:"<<std::endl;
                             std::cout<<"**************************"<<std::endl;
                         }
                         ticketFile<<temp.c_str()<<std::endl;
@@ -210,6 +213,11 @@
                 }
                 else if(kk=="verify_ticket")
                 {
+                    std::string input;
+                    std::cout<<"enter ticket name you want to verify"<<std::endl;
+                    std::getline(std::cin,input);
+                    input+=".txt";
+                    ticketFilename=input;
                     int sfd_2 = socket(AF_INET, SOCK_STREAM, 0);
                     if (sfd_2 == -1) {
                         std::cerr << "Error creating socket" << std::endl;
@@ -241,7 +249,7 @@
                     if(!editfile.is_open())std::cout<<"error in opening file"<<std::endl;
                     std::vector<std::string> lines;
                     std::string line;
-                    std::cout<<"this is the original tikcet"<<std::endl;
+                    std::cout<<"this is the original ticket"<<std::endl;
                     std::cout<<"**************************"<<std::endl;
                     while (std::getline(editfile, line))
                     {
@@ -295,9 +303,9 @@
                     
                     //std::string line;
                     if(choice==1)
-                    std::cout<<"modified tikcet is  transmitted for verification"<<std::endl;
+                    std::cout<<"modified ticket is  transmitted for verification"<<std::endl;
                     else
-                    std::cout<<"Original tikcet is transmitted for verification"<<std::endl;
+                    std::cout<<"Original ticket is transmitted for verification"<<std::endl;
                     std::ifstream ticketFile(ticketFilename.c_str());
                     std::ifstream signatureFile(signatureFilename.c_str());
                     //std::cout<<"sending"<<std::endl;
@@ -321,12 +329,15 @@
                     send(sfd_2,msg_hash.c_str(),64,0); 
                     char result[100];
                     recv(sfd_2,result,sizeof(result),0);
-                    std::string temp  =  result;
-                    temp =  decrypt(temp);
-                    std::cout<<temp.c_str()<<std::endl;
+                   
+                    std::cout<<result<<std::endl;
                     if(choice==0)std::cin.ignore();
                 }
-
+                else if(kk=="log_out")
+                {
+                    loggedIn=0;
+                    
+                }
 
 
             }
