@@ -164,7 +164,7 @@ void* handleClient(void* arg) {
             std::string hashedPassword = password;
 
             std::string decrypted = decrypt(decryptedUsername);
-            std::cout<<(decrypted);
+            //std::cout<<(decrypted);
             std::cout.flush();
             if (choice == 1) { // Signup
                 if (userExists(decrypted)) {
@@ -202,7 +202,18 @@ void* handleClient(void* arg) {
         }
         else
         {
-
+                char status[1000]={'\0'};
+                recv(nsfd, status, sizeof(status), 0);
+                if(strcmp(status,"log_out")==0)
+                {
+                     loggedIn=0;
+                     continue;
+                }
+                else if(strcmp(status,"verify_ticket")==0)
+                {
+                   continue;
+                }
+                std::cout<<"fetching details"<<std::endl;
            
                 char name[1000]={'\0'}, date[1000]={'\0'}, to[1000]={'\0'}, from[1000]={'\0'};
 
@@ -218,7 +229,7 @@ void* handleClient(void* arg) {
                 recv(nsfd, from, sizeof(from), 0);
                 std::string from1=from;
                 from1 = decrypt(from1);
-                std::cout<<from1<<to1<<date1<<name1;
+                //std::cout<<from1<<to1<<date1<<name1;
                 std::string ticketFilename,signatureFilename;
                 ticketFilename=issueTicket(name1, date1, to1, from1); // Issue the ticket
                 //std::cout<<name<<to<<from<<date;
@@ -236,13 +247,13 @@ void* handleClient(void* arg) {
                     sleep(2);
                 }
                 ticketFile.close();
-                
+                std::cout<<"ticket is transmitted"<<std::endl;
                 while (std::getline(signatureFile, line2))
                 {
                     send(nsfd, line2.c_str(), line2.size(), 0);
                     sleep(2);
                 }
-                std::cout<<"successfully signed the recieved ticket and sent it back"<<std::endl;
+                std::cout<<"successfully signed the ticket and sent it back"<<std::endl;
                 signatureFile.close();
                 
 
